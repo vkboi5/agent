@@ -61,7 +61,7 @@ voice_router = APIRouter()
 
 @voice_router.post('/make-call/{phone_number}', tags=['make call'])
 async def create_call(request: Request, phone_number: str, current_user_id: str = Depends(get_current_user)):
-    global USER_ID, ELEVENLABS_VOICE_ID, NAME_OF_AGENT, GREETING_MESSAGE, ROLE_OF_BOT, COMPANY_NAME, TARGET_FIRST_NAME
+    global STREAM_SID, USER_ID, ELEVENLABS_VOICE_ID, NAME_OF_AGENT, GREETING_MESSAGE, ROLE_OF_BOT, COMPANY_NAME, TARGET_FIRST_NAME
     USER_ID = current_user_id
     data = await request.json() 
     NAME_OF_AGENT = data['agent_name']
@@ -70,12 +70,35 @@ async def create_call(request: Request, phone_number: str, current_user_id: str 
     COMPANY_NAME = data['industry']
     TARGET_FIRST_NAME = data['receiver_name']
     ELEVENLABS_VOICE_ID = get_voice_id(current_user_id)
+
+    # Create call using Twilio
     call = twilio_client.calls.create(
-        url=f'{SERVER_ADDRESS}/call/',
-        to=f'+{phone_number}',
-        from_=os.environ['TWILIO_PHONE_NUMBER']
+        url=f'{SERVER_ADDRESS}/call/',  # The URL that Twilio will call when the call is connected
+        to=f'+{phone_number}',  # The phone number to call
+        from_=os.environ['TWILIO_PHONE_NUMBER']  # Your Twilio phone number
     )
-    return Response(content=json.dumps({'detail': 'Calling..'}), media_type='text/xml')
+
+    # Store the call SID globally to be used later
+    STREAM_SID = call.sid
+    print(f"Call initiated with SID: {STREAM_SID}")
+
+    # Return a response with a status message
+    ws_url = f'wss://{SERVER_ADDRESS}/stream/{STREAM_SID}'
+    return Response(content=json.dumps({'detail': 'Calling..', 'call_sid': STREAM_SID, 'ws_url': ws_url}), media_type='application/json')
+
+
+
+# GET CALL SID
+@voice_router.get('/get-call-sid', tags=['get call sid'])
+async def get_call_sid():
+    """Retrieve the current call SID."""
+    if STREAM_SID:
+        print(STREAM_SID)
+        return {"call_sid": STREAM_SID}
+
+    else:
+        return {"error": "No active call SID found"}
+
 
 
 # CALL WEBHOOK
@@ -116,6 +139,10 @@ class TranscriptEventHandler(TranscriptResultStreamHandler):
     async def handle_transcript_event(self, transcript_event: TranscriptEvent):
         global conversation_history, NAME_OF_AGENT, GREETING_MESSAGE, ROLE_OF_BOT, COMPANY_NAME, TARGET_FIRST_NAME
         results = transcript_event.transcript.results
+        for result in results:
+            final_results = result.alternatives[0].transcript
+            await self.websocket.send_text(final_results)  # Send the transcription to frontend
+            print(f"Sent transcription: {final_results}")
         final_results = ""
         for result in results:
             if result.is_partial:
@@ -149,6 +176,8 @@ class TranscriptEventHandler(TranscriptResultStreamHandler):
                         conversation_history.append(
                             {'role': 'user', 'content': final_results})
                         await chat_completion(conversation_history, self.websocket, STREAM_SID)
+                        await self.websocket.send_text(final_results)
+                        print(f"Sent transcription: {final_results}")
                     except TypeError:
                         pass
 
@@ -157,6 +186,7 @@ class TranscriptEventHandler(TranscriptResultStreamHandler):
 
 async def wait_for_user_input(websocket):
 
+    
     transcribe_client = TranscribeStreamingClient(region=REGION)
     stream = await transcribe_client.start_stream_transcription(
         language_code="en-US",

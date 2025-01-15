@@ -1,5 +1,40 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import {
+  Box,
+  TextField,
+  Button,
+  Typography,
+  Container,
+  Grid,
+  Paper,
+} from '@mui/material';
+import { styled } from '@mui/system';
+
+const StyledPaper = styled(Paper)({
+  padding: '2rem',
+  maxWidth: '400px',
+  margin: '2rem auto',
+  backgroundColor: '#121212',
+  color: '#ffffff',
+});
+
+const StyledButton = styled(Button)({
+  backgroundColor: '#ffffff',
+  color: '#121212',
+  marginTop: '1rem',
+  '&:hover': {
+    backgroundColor: '#f5f5f5',
+  },
+});
+
+const StyledLink = styled(Link)({
+  color: '#4caf50',
+  textDecoration: 'none',
+  '&:hover': {
+    textDecoration: 'underline',
+  },
+});
 
 const Login = ({ setUser }) => {
   const [email, setEmail] = useState('');
@@ -26,7 +61,7 @@ const Login = ({ setUser }) => {
         const userResponse = await fetch('http://localhost:8000/user', {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${data.access_token}`,
+            Authorization: `Bearer ${data.access_token}`,
           },
         });
 
@@ -49,24 +84,46 @@ const Login = ({ setUser }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h2>Login</h2>
-      <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Email"
-        required
-      />
-      <input
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        placeholder="Password"
-        required
-      />
-      <button type="submit">Login</button>
-    </form>
+    <Container>
+      <StyledPaper elevation={3}>
+        <Typography variant="h4" align="center" gutterBottom>
+          Login
+        </Typography>
+        <form onSubmit={handleSubmit}>
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Email"
+            variant="outlined"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Password"
+            variant="outlined"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <StyledButton type="submit" variant="contained" fullWidth>
+            Login
+          </StyledButton>
+        </form>
+        <Grid container justifyContent="space-between" alignItems="center" mt={2}>
+          <Grid item>
+            <Typography variant="body2">
+              Don’t have an account?{' '}
+              <StyledLink to="/register">Register</StyledLink>
+            </Typography>
+          </Grid>
+        </Grid>
+      </StyledPaper>
+    </Container>
   );
 };
 

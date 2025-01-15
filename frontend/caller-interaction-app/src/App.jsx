@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Navbar from './Navbar';
 import Login from './Login';
 import Register from './Register';
 import Call from './Call';
+import Home from './Home';
 import PrivateRoute from './PrivateRoute';
 import ConversationPage from './Conversation';
 
@@ -11,6 +13,7 @@ const App = () => {
 
   return (
     <Router>
+      <Navbar user={user} setUser={setUser} />
       <Routes>
         <Route path="/login" element={<Login setUser={setUser} />} />
         <Route path="/register" element={<Register setUser={setUser} />} />
@@ -23,7 +26,7 @@ const App = () => {
             />
           }
         />
-        <Route path="/" element={<h2>Welcome to the Call App</h2>} />
+        <Route path="/" element={<Home />} />
       </Routes>
     </Router>
   );
